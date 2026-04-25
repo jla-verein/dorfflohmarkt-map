@@ -1,0 +1,14 @@
+[project]
+name = "dorfflohmarkt-map"
+version = "0.1.0"
+description = "FastAPI app to display Pretix seller registrations on an interactive map"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.136.1",
+    "geopy>=2.4.1",
+    "httpx>=0.28.1",
+    "pydantic>=2.13.3",
+    "pydantic-settings>=2.14.0",
+    "uvicorn>=0.46.0",
+]
