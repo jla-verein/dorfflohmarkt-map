@@ -949,12 +949,12 @@ def generate_locations_html(sellers: list[Seller], categories: list[str]) -> str
                             <tbody>
 """
         for location in locations:
+            city_col = f"<td>{location['city']}</td>" if has_multiple_cities else ""
+            postal_col = f"<td>{location['postal_code']}</td>" if has_multiple_cities else ""
             html += f"""
                                 <tr>
                                     <td>{location['address']}</td>
-                                    {f"<td>{location['city']}</td>" if has_multiple_cities else ""}
-                                    {f"<td>{location['postal_code']}</td>" if has_multiple_cities else ""}
-                                    <td>{location.get('location_description', '')}</td>
+                                    {city_col}{postal_col}<td>{location.get('location_description', '')}</td>
                                 </tr>
 """
         html += """
