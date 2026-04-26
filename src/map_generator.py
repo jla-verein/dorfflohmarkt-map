@@ -346,12 +346,12 @@ def generate_map_html(sellers: list[Seller], categories: list[str]) -> str:
         const sidebarToggle = document.getElementById('sidebar-toggle');
         const sidebar = document.getElementById('sidebar');
 
-        if (sidebarToggle) {
-            sidebarToggle.addEventListener('click', function() {
+        if (sidebarToggle) {{
+            sidebarToggle.addEventListener('click', function() {{
                 sidebar.classList.toggle('sidebar-hidden');
                 sidebarToggle.textContent = sidebar.classList.contains('sidebar-hidden') ? '☰ Filter' : '✕ Filter';
-            });
-        }
+            }});
+        }}
 
         // Initialize map (will be centered after loading data)
         const map = L.map('map').setView([51.5, 10.0], 6);
@@ -1043,14 +1043,14 @@ def generate_locations_html(sellers: list[Seller], categories: list[str]) -> str
 
             // Handle select all checkbox (header checkbox)
             const headerCheckbox = document.querySelector('.check-header');
-            if (headerCheckbox) {
+            if (headerCheckbox) {{
                 headerCheckbox.addEventListener('change', function() {{
                     document.querySelectorAll('.row-checkbox').forEach(cb => {{
                         cb.checked = this.checked;
                         cb.dispatchEvent(new Event('change'));
                     }});
                 }});
-            }
+            }}
 
             // Handle row selection
             $(document).on('change', '.row-checkbox', function() {{
