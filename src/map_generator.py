@@ -502,7 +502,9 @@ def generate_locations_html(sellers: list[Seller], categories: list[str]) -> str
     """
     # Prepare data for the tables
     sellers_data = []
+    unique_cities = set()
     for seller in sellers:
+        unique_cities.add(seller.city)
         sellers_data.append({
             "address": seller.address,
             "city": seller.city,
@@ -514,6 +516,7 @@ def generate_locations_html(sellers: list[Seller], categories: list[str]) -> str
         })
 
     sellers_json = json.dumps(sellers_data)
+    has_multiple_cities = len(unique_cities) > 1
 
     # Prepare grouped by categories and sort by address
     grouped = {}
@@ -907,17 +910,13 @@ def generate_locations_html(sellers: list[Seller], categories: list[str]) -> str
                     <button class="export-btn" id="export-gmaps-btn">📥 Google Maps (.kml)</button>
                 </div>
 
-                <div class="selection-controls">
-                    <span class="selection-info">Ausgewählte: <span id="selected-count">0</span> / <span id="total-count">0</span></span>
-                </div>
-
                 <table id="sellers-table" class="table table-striped table-hover">
                     <thead>
                         <tr>
                             <th style="width: 30px;"><input type="checkbox" class="check-header"></th>
                             <th>Adresse</th>
-                            <th>Stadt</th>
-                            <th>PLZ</th>
+                            {f'<th>Stadt</th>' if has_multiple_cities else ''}
+                            {f'<th>PLZ</th>' if has_multiple_cities else ''}
                             <th>Standort</th>
                             <th>Kategorien</th>
                         </tr>
@@ -942,8 +941,8 @@ def generate_locations_html(sellers: list[Seller], categories: list[str]) -> str
                             <thead>
                                 <tr>
                                     <th>Adresse</th>
-                                    <th>Stadt</th>
-                                    <th>PLZ</th>
+                                    {f'<th>Stadt</th>' if has_multiple_cities else ''}
+                                    {f'<th>PLZ</th>' if has_multiple_cities else ''}
                                     <th>Standort</th>
                                 </tr>
                             </thead>
@@ -953,8 +952,8 @@ def generate_locations_html(sellers: list[Seller], categories: list[str]) -> str
             html += f"""
                                 <tr>
                                     <td>{location['address']}</td>
-                                    <td>{location['city']}</td>
-                                    <td>{location['postal_code']}</td>
+                                    {f"<td>{location['city']}</td>" if has_multiple_cities else ""}
+                                    {f"<td>{location['postal_code']}</td>" if has_multiple_cities else ""}
                                     <td>{location.get('location_description', '')}</td>
                                 </tr>
 """
@@ -998,8 +997,8 @@ def generate_locations_html(sellers: list[Seller], categories: list[str]) -> str
                         searchable: false
                     }},
                     {{ data: 'address' }},
-                    {{ data: 'city' }},
-                    {{ data: 'postal_code' }},
+                    {f"{{ data: 'city' }}," if has_multiple_cities else ""}
+                    {f"{{ data: 'postal_code' }}," if has_multiple_cities else ""}
                     {{ data: 'location_description' }},
                     {{ data: 'categories' }}
                 ],
@@ -1018,6 +1017,7 @@ def generate_locations_html(sellers: list[Seller], categories: list[str]) -> str
                         "sPrevious": "Zurück"
                     }}
                 }},
+                order: [[1, 'asc']],
                 paging: true,
                 pageLength: 25,
                 ordering: true,
