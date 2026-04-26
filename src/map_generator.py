@@ -366,7 +366,7 @@ def generate_map_html(sellers: list[Seller], categories: list[str]) -> str:
                     marker.openPopup();
                 }});
 
-                markers[props.id] = {{
+                markers[markerIndex] = {{
                     marker: marker,
                     categories: props.categories
                 }};
@@ -405,10 +405,10 @@ def generate_map_html(sellers: list[Seller], categories: list[str]) -> str:
                 );
 
                 if (hasSelectedCategory) {{
-                    map.addLayer(item.marker);
+                    markerClusterGroup.addLayer(item.marker);
                     visibleCount++;
                 }} else {{
-                    map.removeLayer(item.marker);
+                    markerClusterGroup.removeLayer(item.marker);
                 }}
             }});
 
