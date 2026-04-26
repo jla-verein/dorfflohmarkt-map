@@ -194,82 +194,81 @@ def generate_map_html(sellers: list[Seller], categories: list[str]) -> str:
 
         .sidebar-toggle {{
             display: none;
-            position: absolute;
-            top: 10px;
-            left: 10px;
-            z-index: 110;
-            background: white;
-            border: none;
-            padding: 10px 15px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 20px;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
         }}
 
         @media (max-width: 768px) {{
-            .sidebar {{
-                width: 100%;
-                height: auto;
-                max-height: 60vh;
-                position: fixed;
-                bottom: 0;
-                left: 0;
-                right: 0;
-                box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.15);
-                overflow-y: auto;
-                -webkit-overflow-scrolling: touch;
-                z-index: 99;
-            }}
-
-            .sidebar.sidebar-hidden {{
-                max-height: 0;
-                overflow: hidden;
-                padding: 0;
-            }}
-
-            #map {{
+            .container {{
+                flex-direction: column;
                 height: 100vh;
             }}
 
-            .sidebar-toggle {{
-                display: block;
+            .sidebar {{
+                width: 100%;
+                height: 45%;
+                max-height: none;
+                position: relative;
+                bottom: auto;
+                left: auto;
+                right: auto;
+                box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.15);
+                overflow-y: auto;
+                -webkit-overflow-scrolling: touch;
+                z-index: 50;
+                border-top: 1px solid #e0e0e0;
+                padding: 15px;
             }}
 
-            .sidebar-toggle.hidden {{
-                display: none;
+            .sidebar.sidebar-hidden {{
+                max-height: none;
+                overflow-y: auto;
+                padding: 15px;
+            }}
+
+            #map {{
+                height: 55%;
+                width: 100%;
+                flex: 0 0 55%;
             }}
 
             .sidebar h1 {{
-                font-size: 18px;
+                font-size: 16px;
+                margin-bottom: 12px;
+            }}
+
+            .filters {{
                 margin-bottom: 15px;
             }}
 
             .filters h2 {{
-                font-size: 12px;
+                font-size: 11px;
             }}
 
             .category-filters {{
-                gap: 8px;
+                gap: 6px;
             }}
 
             .category-filters label {{
-                font-size: 13px;
-                padding: 3px;
+                font-size: 12px;
+                padding: 2px;
+            }}
+
+            .category-filters input[type="checkbox"] {{
+                width: 16px;
+                height: 16px;
             }}
 
             .stats {{
-                font-size: 12px;
-                padding: 12px;
+                font-size: 11px;
+                padding: 10px;
             }}
 
             .stats p {{
-                margin-bottom: 5px;
+                margin-bottom: 4px;
             }}
 
             .nav-link {{
-                padding: 8px 14px;
-                font-size: 13px;
+                padding: 8px 12px;
+                font-size: 12px;
             }}
         }}
 
@@ -309,7 +308,6 @@ def generate_map_html(sellers: list[Seller], categories: list[str]) -> str:
     </style>
 </head>
 <body>
-    <button class="sidebar-toggle" id="sidebar-toggle">☰ Filter</button>
     <div class="container">
         <div class="sidebar" id="sidebar">
             <h1>🛍️ 2. Angelbachtaler Dorfflohmarkt</h1>
@@ -342,17 +340,6 @@ def generate_map_html(sellers: list[Seller], categories: list[str]) -> str:
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Leaflet.awesome-markers/2.0.2/leaflet.awesome-markers.min.js"></script>
 
     <script>
-        // Mobile sidebar toggle
-        const sidebarToggle = document.getElementById('sidebar-toggle');
-        const sidebar = document.getElementById('sidebar');
-
-        if (sidebarToggle) {{
-            sidebarToggle.addEventListener('click', function() {{
-                sidebar.classList.toggle('sidebar-hidden');
-                sidebarToggle.textContent = sidebar.classList.contains('sidebar-hidden') ? '☰ Filter' : '✕ Filter';
-            }});
-        }}
-
         // Initialize map (will be centered after loading data)
         const map = L.map('map').setView([51.5, 10.0], 6);
 
