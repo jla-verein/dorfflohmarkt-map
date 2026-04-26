@@ -192,20 +192,84 @@ def generate_map_html(sellers: list[Seller], categories: list[str]) -> str:
             background: #1976D2;
         }}
 
+        .sidebar-toggle {{
+            display: none;
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            z-index: 110;
+            background: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 20px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+        }}
+
         @media (max-width: 768px) {{
             .sidebar {{
                 width: 100%;
                 height: auto;
-                max-height: 250px;
-                position: absolute;
+                max-height: 60vh;
+                position: fixed;
                 bottom: 0;
                 left: 0;
                 right: 0;
-                box-shadow: 0 -2px 5px rgba(0, 0, 0, 0.1);
+                box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.15);
+                overflow-y: auto;
+                -webkit-overflow-scrolling: touch;
+                z-index: 99;
+            }}
+
+            .sidebar.sidebar-hidden {{
+                max-height: 0;
+                overflow: hidden;
+                padding: 0;
             }}
 
             #map {{
-                height: calc(100% - 250px);
+                height: 100vh;
+            }}
+
+            .sidebar-toggle {{
+                display: block;
+            }}
+
+            .sidebar-toggle.hidden {{
+                display: none;
+            }}
+
+            .sidebar h1 {{
+                font-size: 18px;
+                margin-bottom: 15px;
+            }}
+
+            .filters h2 {{
+                font-size: 12px;
+            }}
+
+            .category-filters {{
+                gap: 8px;
+            }}
+
+            .category-filters label {{
+                font-size: 13px;
+                padding: 3px;
+            }}
+
+            .stats {{
+                font-size: 12px;
+                padding: 12px;
+            }}
+
+            .stats p {{
+                margin-bottom: 5px;
+            }}
+
+            .nav-link {{
+                padding: 8px 14px;
+                font-size: 13px;
             }}
         }}
 
@@ -245,8 +309,9 @@ def generate_map_html(sellers: list[Seller], categories: list[str]) -> str:
     </style>
 </head>
 <body>
+    <button class="sidebar-toggle" id="sidebar-toggle">☰ Filter</button>
     <div class="container">
-        <div class="sidebar">
+        <div class="sidebar" id="sidebar">
             <h1>🛍️ 2. Angelbachtaler Dorfflohmarkt</h1>
 
             <div class="filters">
@@ -277,6 +342,17 @@ def generate_map_html(sellers: list[Seller], categories: list[str]) -> str:
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Leaflet.awesome-markers/2.0.2/leaflet.awesome-markers.min.js"></script>
 
     <script>
+        // Mobile sidebar toggle
+        const sidebarToggle = document.getElementById('sidebar-toggle');
+        const sidebar = document.getElementById('sidebar');
+
+        if (sidebarToggle) {
+            sidebarToggle.addEventListener('click', function() {
+                sidebar.classList.toggle('sidebar-hidden');
+                sidebarToggle.textContent = sidebar.classList.contains('sidebar-hidden') ? '☰ Filter' : '✕ Filter';
+            });
+        }
+
         // Initialize map (will be centered after loading data)
         const map = L.map('map').setView([51.5, 10.0], 6);
 
@@ -845,9 +921,6 @@ def generate_locations_html(sellers: list[Seller], categories: list[str]) -> str
                 </div>
 
                 <div class="selection-controls">
-                    <label>
-                        <input type="checkbox" id="select-all-checkbox"> <strong>Alle auswählen</strong>
-                    </label>
                     <span class="selection-info">Ausgewählte: <span id="selected-count">0</span> / <span id="total-count">0</span></span>
                 </div>
 
@@ -968,13 +1041,16 @@ def generate_locations_html(sellers: list[Seller], categories: list[str]) -> str
             // Update total count
             document.getElementById('total-count').textContent = sellersData.length;
 
-            // Handle select all checkbox
-            document.getElementById('select-all-checkbox').addEventListener('change', function() {{
-                document.querySelectorAll('.row-checkbox').forEach(cb => {{
-                    cb.checked = this.checked;
-                    cb.dispatchEvent(new Event('change'));
+            // Handle select all checkbox (header checkbox)
+            const headerCheckbox = document.querySelector('.check-header');
+            if (headerCheckbox) {
+                headerCheckbox.addEventListener('change', function() {{
+                    document.querySelectorAll('.row-checkbox').forEach(cb => {{
+                        cb.checked = this.checked;
+                        cb.dispatchEvent(new Event('change'));
+                    }});
                 }});
-            }});
+            }
 
             // Handle row selection
             $(document).on('change', '.row-checkbox', function() {{
@@ -983,6 +1059,14 @@ def generate_locations_html(sellers: list[Seller], categories: list[str]) -> str
 
                 // Update row highlighting
                 $(this).closest('tr').toggleClass('selected');
+
+                // Update header checkbox state
+                const headerCheckbox = document.querySelector('.check-header');
+                const totalCheckboxes = document.querySelectorAll('.row-checkbox').length;
+                if (headerCheckbox) {{
+                    headerCheckbox.checked = count === totalCheckboxes && totalCheckboxes > 0;
+                    headerCheckbox.indeterminate = count > 0 && count < totalCheckboxes;
+                }}
             }});
 
             // CSV Export
