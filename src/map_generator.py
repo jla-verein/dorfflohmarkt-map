@@ -520,24 +520,24 @@ def generate_locations_html(sellers: list[Seller], categories: list[str]) -> str
 
     # Build columns array based on whether we have multiple cities
     columns_def = """[
-                    {{
+                    {
                         data: null,
-                        render: function() {{
+                        render: function() {
                             return '<input type="checkbox" class="row-checkbox">';
-                        }},
+                        },
                         orderable: false,
                         searchable: false
-                    }},
-                    {{ data: 'address' }},"""
+                    },
+                    { data: 'address' },"""
 
     if has_multiple_cities:
         columns_def += """
-                    {{ data: 'city' }},
-                    {{ data: 'postal_code' }},"""
+                    { data: 'city' },
+                    { data: 'postal_code' },"""
 
     columns_def += """
-                    {{ data: 'location_description' }},
-                    {{ data: 'categories' }}
+                    { data: 'location_description' },
+                    { data: 'categories' }
                 ]"""
 
     # Prepare grouped by categories and sort by address
@@ -930,6 +930,10 @@ def generate_locations_html(sellers: list[Seller], categories: list[str]) -> str
                     <button class="export-btn" id="export-csv-btn">📥 Als CSV exportieren</button>
                     <button class="export-btn" id="export-excel-btn">📥 Als Excel exportieren</button>
                     <button class="export-btn" id="export-gmaps-btn">📥 Google Maps (.kml)</button>
+                </div>
+
+                <div class="selection-controls">
+                    <span class="selection-info">Ausgewählte: <span id="selected-count">0</span> / <span id="total-count">0</span></span>
                 </div>
 
                 <table id="sellers-table" class="table table-striped table-hover">
