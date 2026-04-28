@@ -977,7 +977,7 @@ def generate_locations_html(sellers: list[Seller], categories: list[str]) -> str
     <script src="https://cdn.datatables.net/2.1.4/js/dataTables.min.js"></script>
     <script src="https://cdn.datatables.net/2.1.4/js/dataTables.bootstrap5.js"></script>
     <!-- SheetJS for Excel export -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.min.js"></script>
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
 
     <script>
         // Initialize DataTable
