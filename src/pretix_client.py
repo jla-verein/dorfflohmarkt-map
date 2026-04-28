@@ -1,6 +1,8 @@
 """Pretix API client for fetching order and seller data."""
 import httpx
 import logging
+import json
+import os
 from typing import Optional
 from geopy.geocoders import Nominatim
 from .config import settings
@@ -22,6 +24,57 @@ class PretixClient:
         self.headers = {"Authorization": f"Token {self.api_token}"}
         self.geocoder = Nominatim(user_agent="dorfflohmarkt-map")
         self._question_options_cache = {}  # Cache for question options
+        self._address_overrides = self._load_address_overrides()
+
+    def _load_address_overrides(self) -> dict:
+        """
+        Load address overrides from overrides.json file.
+
+        Returns:
+            Dictionary mapping original address combinations to overrides
+        """
+        overrides = {}
+
+        # Try to load from overrides.json in the root directory
+        overrides_file = os.path.join(os.path.dirname(os.path.dirname(__file__)), "..", "overrides.json")
+
+        if os.path.exists(overrides_file):
+            try:
+                with open(overrides_file, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+
+                for override_entry in data.get("overrides", []):
+                    original = override_entry.get("original", {})
+
+                    # Create a key from the original address components
+                    key = (
+                        original.get("address", "").lower().strip(),
+                        original.get("postal_code", "").lower().strip(),
+                        original.get("city", "").lower().strip(),
+                    )
+
+                    overrides[key] = override_entry.get("override", {})
+
+                logger.info(f"Loaded {len(overrides)} address overrides from {overrides_file}")
+            except Exception as e:
+                logger.error(f"Error loading address overrides: {e}")
+
+        return overrides
+
+    def _get_address_override(self, address: str, postal_code: str, city: str) -> Optional[dict]:
+        """
+        Check if there's an override for the given address.
+
+        Args:
+            address: Street address
+            postal_code: Postal code
+            city: City name
+
+        Returns:
+            Override dictionary or None
+        """
+        key = (address.lower().strip(), postal_code.lower().strip(), city.lower().strip())
+        return self._address_overrides.get(key)
 
     async def get_sellers(self) -> list[Seller]:
         """
@@ -96,6 +149,11 @@ class PretixClient:
         """
         Geocode an address to get latitude and longitude.
 
+        Checks for address overrides first:
+        - If override has coordinates, use those directly
+        - If override has an address, geocode the override address instead
+        - Otherwise, geocode the original address
+
         Args:
             address: Street address
             city: City name
@@ -105,6 +163,22 @@ class PretixClient:
         Returns:
             Tuple of (latitude, longitude) or (None, None) if geocoding fails
         """
+        # Check for address override
+        override = self._get_address_override(address, postal_code, city)
+
+        if override:
+            # If override has direct coordinates, use those
+            if "latitude" in override and "longitude" in override:
+                logger.info(f"Using override coordinates for address '{address}'")
+                return override["latitude"], override["longitude"]
+
+            # If override has an address, use that for geocoding
+            if "address" in override:
+                address = override["address"]
+                city = override.get("city", city)
+                postal_code = override.get("postal_code", postal_code)
+                logger.info(f"Using override address for original address, geocoding: {address}")
+
         try:
             full_address = f"{address}, {postal_code} {city}, {country}"
             location = self.geocoder.geocode(full_address, timeout=10)

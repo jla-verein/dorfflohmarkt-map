@@ -1,0 +1,29 @@
+{
+  "overrides": [
+    {
+      "description": "Example: Override with a different address for geocoding",
+      "original": {
+        "address": "Hauptstraße 123",
+        "postal_code": "12345",
+        "city": "Berlin"
+      },
+      "override": {
+        "address": "Hauptstraße 124",
+        "postal_code": "12345",
+        "city": "Berlin"
+      }
+    },
+    {
+      "description": "Example: Override with direct coordinates",
+      "original": {
+        "address": "Neue Straße 45",
+        "postal_code": "67890",
+        "city": "München"
+      },
+      "override": {
+        "latitude": 48.1373,
+        "longitude": 11.5755
+      }
+    }
+  ]
+}

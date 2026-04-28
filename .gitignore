@@ -3,6 +3,9 @@
 .env.local
 .env.*.local
 
+# Address overrides (user-specific)
+overrides.json
+
 # Python
 __pycache__/
 *.py[cod]
