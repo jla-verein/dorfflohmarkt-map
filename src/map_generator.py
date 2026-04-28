@@ -518,6 +518,28 @@ def generate_locations_html(sellers: list[Seller], categories: list[str]) -> str
     sellers_json = json.dumps(sellers_data)
     has_multiple_cities = len(unique_cities) > 1
 
+    # Build columns array based on whether we have multiple cities
+    columns_def = """[
+                    {{
+                        data: null,
+                        render: function() {{
+                            return '<input type="checkbox" class="row-checkbox">';
+                        }},
+                        orderable: false,
+                        searchable: false
+                    }},
+                    {{ data: 'address' }},"""
+
+    if has_multiple_cities:
+        columns_def += """
+                    {{ data: 'city' }},
+                    {{ data: 'postal_code' }},"""
+
+    columns_def += """
+                    {{ data: 'location_description' }},
+                    {{ data: 'categories' }}
+                ]"""
+
     # Prepare grouped by categories and sort by address
     grouped = {}
     for seller in sellers:
@@ -987,21 +1009,7 @@ def generate_locations_html(sellers: list[Seller], categories: list[str]) -> str
         $(document).ready(function() {{
             table = $('#sellers-table').DataTable({{
                 data: sellersData,
-                columns: [
-                    {{
-                        data: null,
-                        render: function() {{
-                            return '<input type="checkbox" class="row-checkbox">';
-                        }},
-                        orderable: false,
-                        searchable: false
-                    }},
-                    {{ data: 'address' }},
-                    {f"{{ data: 'city' }}," if has_multiple_cities else ""}
-                    {f"{{ data: 'postal_code' }}," if has_multiple_cities else ""}
-                    {{ data: 'location_description' }},
-                    {{ data: 'categories' }}
-                ],
+                columns: {columns_def},
                 language: {{
                     "sEmptyTable": "Keine Daten in der Tabelle",
                     "sInfo": "_START_ bis _END_ von _TOTAL_ Einträgen",
