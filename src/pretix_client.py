@@ -3,6 +3,8 @@ import httpx
 import logging
 import json
 import os
+import time
+from functools import lru_cache
 from typing import Optional
 from geopy.geocoders import Nominatim
 from .config import settings
@@ -25,6 +27,7 @@ class PretixClient:
         self.geocoder = Nominatim(user_agent="dorfflohmarkt-map")
         self._question_options_cache = {}  # Cache for question options
         self._address_overrides = self._load_address_overrides()
+        self._last_geocode_time = 0  # Timestamp of last geocoding request for rate limiting
 
     def _load_address_overrides(self) -> dict:
         """
@@ -149,6 +152,7 @@ class PretixClient:
         """
         Geocode an address to get latitude and longitude.
 
+        Implements rate limiting (1 request per second) and caching.
         Checks for address overrides first:
         - If override has coordinates, use those directly
         - If override has an address, geocode the override address instead
@@ -179,10 +183,39 @@ class PretixClient:
                 postal_code = override.get("postal_code", postal_code)
                 logger.info(f"Using override address for original address, geocoding: {address}")
 
-        try:
-            full_address = f"{address}, {postal_code} {city}, {country}"
-            location = self.geocoder.geocode(full_address, timeout=10)
+        full_address = f"{address}, {postal_code} {city}, {country}"
 
+        # Rate limiting: Nominatim has a 1 request/second limit
+        # We wait at least 1 second between requests to be compliant
+        current_time = time.time()
+        time_since_last_request = current_time - self._last_geocode_time
+
+        if time_since_last_request < 1.0:
+            sleep_time = 1.0 - time_since_last_request
+            logger.debug(f"Rate limiting: sleeping for {sleep_time:.2f}s before geocoding '{full_address}'")
+            time.sleep(sleep_time)
+
+        # Update last request time
+        self._last_geocode_time = time.time()
+
+        # Geocode using cached method
+        return self._geocode_with_nominatim(full_address)
+
+    @lru_cache(maxsize=256)
+    def _geocode_with_nominatim(self, full_address: str) -> tuple[Optional[float], Optional[float]]:
+        """
+        Internal cached method to geocode an address using Nominatim.
+
+        Uses LRU cache to avoid redundant geocoding requests.
+
+        Args:
+            full_address: Full formatted address string
+
+        Returns:
+            Tuple of (latitude, longitude) or (None, None) if geocoding fails
+        """
+        try:
+            location = self.geocoder.geocode(full_address, timeout=10)
             if location:
                 return location.latitude, location.longitude
         except Exception as e:
