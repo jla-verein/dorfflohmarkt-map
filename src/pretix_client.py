@@ -90,7 +90,7 @@ class PretixClient:
         overrides = {}
 
         # Try to load from overrides.json in the root directory
-        overrides_file = os.path.join(os.path.dirname(os.path.dirname(__file__)), "..", "overrides.json")
+        overrides_file = os.path.join(os.path.dirname(os.path.dirname(__file__)), "overrides.json")
 
         if os.path.exists(overrides_file):
             try:
