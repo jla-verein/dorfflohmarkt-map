@@ -4,13 +4,66 @@ import logging
 import json
 import os
 import time
-from functools import lru_cache
 from typing import Optional
 from geopy.geocoders import Nominatim
 from .config import settings
 from .models import Seller
 
 logger = logging.getLogger(__name__)
+
+# Module-level geocoder for use in cached function
+_nominatim_geocoder = Nominatim(user_agent="dorfflohmarkt-map")
+_last_geocode_time = 0
+_geocode_cache = {}  # Manual cache that only stores successful results
+
+
+def _cached_geocode_nominatim(full_address: str) -> tuple[Optional[float], Optional[float]]:
+    """
+    Cached function to geocode an address using Nominatim.
+
+    Only caches successful results (latitude/longitude).
+    Failed results (None, None) are not cached and will be retried.
+
+    Includes rate limiting to ensure 1 request/second compliance.
+
+    Args:
+        full_address: Full formatted address string
+
+    Returns:
+        Tuple of (latitude, longitude) or (None, None) if geocoding fails
+    """
+    global _last_geocode_time
+
+    # Check if we have a cached successful result
+    if full_address in _geocode_cache:
+        return _geocode_cache[full_address]
+
+    # Rate limiting: Nominatim has a 1 request/second limit
+    current_time = time.time()
+    time_since_last_request = current_time - _last_geocode_time
+
+    if time_since_last_request < 1.5:
+        sleep_time = 1.5 - time_since_last_request
+        logger.debug(f"Rate limiting: sleeping for {sleep_time:.2f}s before geocoding '{full_address}'")
+        time.sleep(sleep_time)
+
+    # Update last request time
+    _last_geocode_time = time.time()
+
+    # Perform geocoding
+    result = None, None
+    try:
+        location = _nominatim_geocoder.geocode(full_address, timeout=10)
+        if location:
+            result = location.latitude, location.longitude
+            logger.debug(f"Geocoded '{full_address}' -> ({result[0]}, {result[1]})")
+            # Only cache successful results
+            _geocode_cache[full_address] = result
+    except Exception as e:
+        logger.warning(f"Error geocoding address '{full_address}': {e}")
+        # Don't cache failed results - allow retry later
+
+    return result
 
 
 class PretixClient:
@@ -24,10 +77,8 @@ class PretixClient:
         self.product_id = settings.pretix_product_id
         self.api_token = settings.pretix_api_token
         self.headers = {"Authorization": f"Token {self.api_token}"}
-        self.geocoder = Nominatim(user_agent="dorfflohmarkt-map")
         self._question_options_cache = {}  # Cache for question options
         self._address_overrides = self._load_address_overrides()
-        self._last_geocode_time = 0  # Timestamp of last geocoding request for rate limiting
 
     def _load_address_overrides(self) -> dict:
         """
@@ -152,11 +203,11 @@ class PretixClient:
         """
         Geocode an address to get latitude and longitude.
 
-        Implements rate limiting (1 request per second) and caching.
-        Checks for address overrides first:
+        Handles address overrides and delegates to cached geocoding function.
         - If override has coordinates, use those directly
         - If override has an address, geocode the override address instead
         - Otherwise, geocode the original address
+        - Results are cached to avoid redundant requests and rate limiting delays
 
         Args:
             address: Street address
@@ -183,45 +234,9 @@ class PretixClient:
                 postal_code = override.get("postal_code", postal_code)
                 logger.info(f"Using override address for original address, geocoding: {address}")
 
+        # Build full address string and use cached geocoding
         full_address = f"{address}, {postal_code} {city}, {country}"
-
-        # Rate limiting: Nominatim has a 1 request/second limit
-        # We wait at least 1 second between requests to be compliant
-        current_time = time.time()
-        time_since_last_request = current_time - self._last_geocode_time
-
-        if time_since_last_request < 1.0:
-            sleep_time = 1.0 - time_since_last_request
-            logger.debug(f"Rate limiting: sleeping for {sleep_time:.2f}s before geocoding '{full_address}'")
-            time.sleep(sleep_time)
-
-        # Update last request time
-        self._last_geocode_time = time.time()
-
-        # Geocode using cached method
-        return self._geocode_with_nominatim(full_address)
-
-    @lru_cache(maxsize=256)
-    def _geocode_with_nominatim(self, full_address: str) -> tuple[Optional[float], Optional[float]]:
-        """
-        Internal cached method to geocode an address using Nominatim.
-
-        Uses LRU cache to avoid redundant geocoding requests.
-
-        Args:
-            full_address: Full formatted address string
-
-        Returns:
-            Tuple of (latitude, longitude) or (None, None) if geocoding fails
-        """
-        try:
-            location = self.geocoder.geocode(full_address, timeout=10)
-            if location:
-                return location.latitude, location.longitude
-        except Exception as e:
-            logger.warning(f"Error geocoding address '{full_address}': {e}")
-
-        return None, None
+        return _cached_geocode_nominatim(full_address)
 
     async def _extract_seller_from_order(self, order: dict, client: httpx.AsyncClient) -> Optional[Seller]:
         """
