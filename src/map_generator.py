@@ -205,7 +205,7 @@ def generate_map_html(sellers: list[Seller], categories: list[str]) -> str:
 
             .sidebar {{
                 width: 100%;
-                height: 45%;
+                height: 30%;
                 max-height: none;
                 position: relative;
                 bottom: auto;
@@ -222,13 +222,13 @@ def generate_map_html(sellers: list[Seller], categories: list[str]) -> str:
             .sidebar.sidebar-hidden {{
                 max-height: none;
                 overflow-y: auto;
-                padding: 15px;
+                padding: 15px;  
             }}
 
             #map {{
-                height: 55%;
+                height: 70%;
                 width: 100%;
-                flex: 0 0 55%;
+                flex: 0 0 70%;
             }}
 
             .sidebar h1 {{
