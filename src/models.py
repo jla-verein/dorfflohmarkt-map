@@ -12,6 +12,7 @@ class Seller(BaseModel):
     country: Optional[str] = None
     categories: list[str]
     location_description: Optional[str] = None
+    other_text: Optional[str] = None
     latitude: Optional[float] = None
     longitude: Optional[float] = None
 

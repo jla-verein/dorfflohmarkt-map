@@ -260,6 +260,7 @@ class PretixClient:
             # Extract categories and location description from order position answers
             categories = []
             location_description = None
+            other_text = None
 
             if order.get("positions"):
                 for position in order["positions"]:
@@ -269,23 +270,25 @@ class PretixClient:
 
                     for answer in position.get("answers", []):
                         question_id = answer.get("question")
+                        question_identifier = answer.get("question_identifier")
                         option_identifiers = answer.get("option_identifiers", [])
-                        answer_text = answer.get("answer", "")
+                        answer_text = answer.get("answer", "").replace("\r\n", "<br>")
 
-                        # Question 2 is the location description
-                        if question_id == 2 and answer_text:
-                            location_description = answer_text
-
-                        # Category questions have option_identifiers
-                        if option_identifiers and question_id != 2:
-                            # Fetch question options to map identifiers to text
+                        # Question 1 is the categories
+                        if question_id == 1 and option_identifiers:
                             options_map = await self._fetch_question_options(question_id, client)
-
-                            # Convert identifiers to readable text
                             for identifier in option_identifiers:
                                 category_text = options_map.get(identifier, identifier)
                                 if category_text not in categories:
                                     categories.append(category_text)
+
+                        # Question 2 is the location description
+                        if question_id == 2 and answer_text:
+                            location_description = answer_text
+                        
+                        if question_identifier == "other-public" and answer_text:
+                            other_text = answer_text if answer_text else None
+
 
             # Only create seller if we have address info
             if address or city:
@@ -299,6 +302,7 @@ class PretixClient:
                     country=country,
                     categories=categories if categories else ["Other"],
                     location_description=location_description,
+                    other_text=other_text,
                     latitude=latitude,
                     longitude=longitude,
                 )

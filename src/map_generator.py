@@ -34,6 +34,7 @@ def generate_map_html(sellers: list[Seller], categories: list[str]) -> str:
                 "country": seller.country,
                 "categories": seller.categories,
                 "location_description": seller.location_description,
+                "other_text": seller.other_text,
             },
         }
         geojson_features.append(feature)
@@ -417,6 +418,7 @@ def generate_map_html(sellers: list[Seller], categories: list[str]) -> str:
                             ${{props.postal_code}} ${{props.city}}
                         </div>
                         ${{props.location_description ? '<div class="location-desc" style="font-size: 13px; color: #333; margin: 8px 0; padding: 8px; background: #f5f5f5; border-radius: 4px;"><strong>📍 Standort:</strong> ' + props.location_description + '</div>' : ''}}
+                        ${{props.other_text ? '<div class="other-text" style="font-size: 13px; color: #333; margin: 8px 0; padding: 8px; background: #f5f5f5; border-radius: 4px;"><strong>📝 Sonstiges:</strong> ' + props.other_text + '</div>' : ''}}
                         <div class="categories">
                             <strong>🏷️ Kategorien:</strong><br>
                             ${{props.categories.map(cat => `<span class="category-badge">${{cat}}</span>`).join('')}}
