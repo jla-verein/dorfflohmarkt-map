@@ -1,0 +1,29 @@
+{
+  "overrides": [
+    {
+      "description": "Talstraße 11d -> Talstraße 11c",
+      "original": {
+        "address": "Talstraße 11d",
+        "postal_code": "74918",
+        "city": "Angelbachtal"
+      },
+      "override": {
+        "address": "Talstraße 11c",
+        "postal_code": "74918",
+        "city": "Angelbachtal"
+      }
+    },
+    {
+      "description": "Nelkenweg 17 no house",
+      "original": {
+        "address": "Nelkenweg 17",
+        "postal_code": "74918",
+        "city": "Angelbachtal"
+      },
+      "override": {
+        "latitude": 49.231033,
+        "longitude": 8.772607
+      }
+    }
+  ]
+}

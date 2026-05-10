@@ -12,7 +12,7 @@ from .models import Seller
 logger = logging.getLogger(__name__)
 
 # Module-level geocoder for use in cached function
-_nominatim_geocoder = Nominatim(user_agent="dorfflohmarkt-map")
+_nominatim_geocoder = Nominatim(user_agent="dorfflohmarkt-map")  # type: ignore
 _last_geocode_time = 0
 _geocode_cache = {}  # Manual cache that only stores successful results
 
@@ -50,17 +50,17 @@ def _cached_geocode_nominatim(full_address: str) -> tuple[Optional[float], Optio
     # Update last request time
     _last_geocode_time = time.time()
 
-    # Perform geocoding
+    # Perform geocoding (Nominatim.geocode is synchronous)
     result = None, None
     try:
-        location = _nominatim_geocoder.geocode(full_address, timeout=10)
+        location = _nominatim_geocoder.geocode(full_address)
         if location:
             try:
-                latitude = float(location.latitude) if hasattr(location, 'latitude') else None
-                longitude = float(location.longitude) if hasattr(location, 'longitude') else None
+                latitude = location.latitude  # type: ignore
+                longitude = location.longitude  # type: ignore
 
                 if latitude is not None and longitude is not None:
-                    result = latitude, longitude
+                    result = float(latitude), float(longitude)
                     logger.debug(f"Geocoded '{full_address}' -> ({result[0]}, {result[1]})")
                     # Only cache successful results
                     _geocode_cache[full_address] = result
