@@ -306,6 +306,30 @@ def generate_map_html(sellers: list[Seller], categories: list[str]) -> str:
             font-size: 11px;
             font-weight: 500;
         }}
+
+        .popup-content {{
+            max-height: 70vh;
+            overflow-y: auto;
+            word-wrap: break-word;
+            word-break: break-word;
+        }}
+
+        @media (max-width: 768px) {{
+            .popup-content {{
+                min-width: 180px;
+                max-height: 50vh;
+                font-size: 12px;
+            }}
+
+            .popup-content .address {{
+                font-size: 12px;
+                margin-bottom: 8px;
+            }}
+
+            .popup-content .categories {{
+                font-size: 11px;
+            }}
+        }}
     </style>
 </head>
 <body>
@@ -513,6 +537,7 @@ def generate_locations_html(sellers: list[Seller], categories: list[str]) -> str
             "postal_code": seller.postal_code,
             "categories": ", ".join(seller.categories),
             "location_description": seller.location_description or "",
+            "other_text": seller.other_text or "",
             "latitude": seller.latitude,
             "longitude": seller.longitude,
         })
@@ -539,6 +564,10 @@ def generate_locations_html(sellers: list[Seller], categories: list[str]) -> str
 
     columns_def += """
                     { data: 'location_description' },
+                    {
+                        data: 'other_text',
+                        visible: false
+                    },
                     { data: 'categories' }
                 ]"""
 
@@ -553,6 +582,7 @@ def generate_locations_html(sellers: list[Seller], categories: list[str]) -> str
                 "city": seller.city,
                 "postal_code": seller.postal_code,
                 "location_description": seller.location_description or "",
+                "other_text": seller.other_text or "",
             })
 
     # Sort addresses within each category
@@ -946,6 +976,7 @@ def generate_locations_html(sellers: list[Seller], categories: list[str]) -> str
                             {f'<th>Stadt</th>' if has_multiple_cities else ''}
                             {f'<th>PLZ</th>' if has_multiple_cities else ''}
                             <th>Standort</th>
+                            <th style="display: none;">Sonstiges</th>
                             <th>Kategorien</th>
                         </tr>
                     </thead>
@@ -972,6 +1003,7 @@ def generate_locations_html(sellers: list[Seller], categories: list[str]) -> str
                                     {f'<th>Stadt</th>' if has_multiple_cities else ''}
                                     {f'<th>PLZ</th>' if has_multiple_cities else ''}
                                     <th>Standort</th>
+                                    <th>Sonstiges</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -982,7 +1014,7 @@ def generate_locations_html(sellers: list[Seller], categories: list[str]) -> str
             html += f"""
                                 <tr>
                                     <td>{location['address']}</td>
-                                    {city_col}{postal_col}<td>{location.get('location_description', '')}</td>
+                                    {city_col}{postal_col}<td>{location.get('location_description', '')}</td><td>{location.get('other_text', '')}</td>
                                 </tr>
 """
         html += """
@@ -1096,15 +1128,16 @@ def generate_locations_html(sellers: list[Seller], categories: list[str]) -> str
 
         function exportAsCSV() {{
             const rows = getSelectedRows();
-            let csv = 'Adresse,Stadt,PLZ,Standort,Kategorien\\n';
+            let csv = 'Adresse,Stadt,PLZ,Standort,Sonstiges,Kategorien\\n';
 
             rows.forEach(row => {{
                 const address = '"' + (row.address || '').replace(/"/g, '""') + '"';
                 const city = '"' + (row.city || '').replace(/"/g, '""') + '"';
                 const postal = '"' + (row.postal_code || '').replace(/"/g, '""') + '"';
                 const description = '"' + (row.location_description || '').replace(/"/g, '""') + '"';
+                const otherText = '"' + (row.other_text || '').replace(/"/g, '""') + '"';
                 const categories = '"' + (row.categories || '').replace(/"/g, '""') + '"';
-                csv += address + ',' + city + ',' + postal + ',' + description + ',' + categories + '\\n';
+                csv += address + ',' + city + ',' + postal + ',' + description + ',' + otherText + ',' + categories + '\\n';
             }});
 
             const blob = new Blob([csv], {{ type: 'text/csv;charset=utf-8;' }});
@@ -1121,6 +1154,7 @@ def generate_locations_html(sellers: list[Seller], categories: list[str]) -> str
                 'Stadt': row.city,
                 'PLZ': row.postal_code,
                 'Standort': row.location_description,
+                'Sonstiges': row.other_text,
                 'Kategorien': row.categories
             }}));
 
@@ -1141,9 +1175,13 @@ def generate_locations_html(sellers: list[Seller], categories: list[str]) -> str
 
             rows.forEach((row, index) => {{
                 if (row.latitude && row.longitude) {{
+                    let description = row.postal_code + ' ' + row.city + '\\n' + row.categories;
+                    if (row.other_text) {{
+                        description += '\\nSonstiges: ' + row.other_text;
+                    }}
                     kml += '    <Placemark>\\n';
                     kml += '      <name>' + escapeXml(row.address) + '</name>\\n';
-                    kml += '      <description>' + escapeXml(row.postal_code + ' ' + row.city + '\\n' + row.categories) + '</description>\\n';
+                    kml += '      <description>' + escapeXml(description) + '</description>\\n';
                     kml += '      <Point>\\n';
                     kml += '        <coordinates>' + row.longitude + ',' + row.latitude + ',0</coordinates>\\n';
                     kml += '      </Point>\\n';
