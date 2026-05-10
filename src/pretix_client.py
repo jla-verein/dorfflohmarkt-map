@@ -55,10 +55,19 @@ def _cached_geocode_nominatim(full_address: str) -> tuple[Optional[float], Optio
     try:
         location = _nominatim_geocoder.geocode(full_address, timeout=10)
         if location:
-            result = location.latitude, location.longitude
-            logger.debug(f"Geocoded '{full_address}' -> ({result[0]}, {result[1]})")
-            # Only cache successful results
-            _geocode_cache[full_address] = result
+            try:
+                latitude = float(location.latitude) if hasattr(location, 'latitude') else None
+                longitude = float(location.longitude) if hasattr(location, 'longitude') else None
+
+                if latitude is not None and longitude is not None:
+                    result = latitude, longitude
+                    logger.debug(f"Geocoded '{full_address}' -> ({result[0]}, {result[1]})")
+                    # Only cache successful results
+                    _geocode_cache[full_address] = result
+                else:
+                    logger.warning(f"Geocoding returned location but missing coordinates for '{full_address}'")
+            except (AttributeError, ValueError, TypeError) as e:
+                logger.warning(f"Error extracting coordinates from location object for '{full_address}': {e}")
     except Exception as e:
         logger.warning(f"Error geocoding address '{full_address}': {e}")
         # Don't cache failed results - allow retry later
