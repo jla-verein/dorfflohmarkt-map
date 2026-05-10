@@ -1008,7 +1008,7 @@ def generate_locations_html(sellers: list[Seller], categories: list[str]) -> str
                             {f'<th>Stadt</th>' if has_multiple_cities else ''}
                             {f'<th>PLZ</th>' if has_multiple_cities else ''}
                             <th>Standort</th>
-                            <th style="display: none;">Sonstiges</th>
+                            <th>Sonstiges</th>
                             <th>Kategorien</th>
                         </tr>
                     </thead>
@@ -1260,18 +1260,24 @@ def generate_locations_html(sellers: list[Seller], categories: list[str]) -> str
 
         // Toggle "Sonstiges" column visibility in category tables
         document.querySelectorAll('.toggle-category-other-btn').forEach(btn => {{
+            // Track visibility state per button
+            let isVisible = false;
+            btn.dataset.visible = 'false';
+
             btn.addEventListener('click', function(e) {{
                 e.preventDefault();
                 const table = this.closest('.category-section').querySelector('table');
                 const otherCells = table.querySelectorAll('.other-column');
-                const isHidden = otherCells[0].style.display === 'none';
+
+                isVisible = !isVisible;
+                this.dataset.visible = isVisible;
 
                 otherCells.forEach(cell => {{
-                    cell.style.display = isHidden ? '' : 'none';
+                    cell.style.display = isVisible ? '' : 'none';
                 }});
 
-                this.textContent = isHidden ? '📝 V' : '📝 H';
-                this.style.background = isHidden ? 'rgba(255, 255, 255, 0.3)' : 'rgba(212, 17, 89, 0.7)';
+                this.textContent = isVisible ? '📝 H' : '📝 V';
+                this.style.background = isVisible ? 'rgba(212, 17, 89, 0.7)' : 'rgba(255, 255, 255, 0.3)';
             }});
         }});
     </script>
