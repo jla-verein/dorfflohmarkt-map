@@ -307,6 +307,18 @@ def generate_map_html(sellers: list[Seller], categories: list[str]) -> str:
             font-weight: 500;
         }}
 
+        .popup-content .other-text {{
+            word-wrap: break-word;
+            word-break: break-word;
+        }}
+
+        .popup-content .other-text span {{
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            -webkit-box-orient: vertical;
+            line-height: 1.4;
+        }}
+
         .popup-content {{
             max-height: 70vh;
             overflow-y: auto;
@@ -442,7 +454,7 @@ def generate_map_html(sellers: list[Seller], categories: list[str]) -> str:
                             ${{props.postal_code}} ${{props.city}}
                         </div>
                         ${{props.location_description ? '<div class="location-desc" style="font-size: 13px; color: #333; margin: 8px 0; padding: 8px; background: #f5f5f5; border-radius: 4px;"><strong>📍 Standort:</strong> ' + props.location_description + '</div>' : ''}}
-                        ${{props.other_text ? '<div class="other-text" style="font-size: 13px; color: #333; margin: 8px 0; padding: 8px; background: #f5f5f5; border-radius: 4px;"><strong>📝 Sonstiges:</strong> ' + props.other_text + '</div>' : ''}}
+                        ${{props.other_text ? '<div class="other-text" style="font-size: 13px; color: #333; margin: 8px 0; padding: 8px; background: #f5f5f5; border-radius: 4px;"><strong>📝 Sonstiges:</strong> <span style="display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;">' + props.other_text + '</span><br><a href="/locations" style="font-size: 12px; color: #2196F3; text-decoration: none; margin-top: 4px; display: inline-block;">→ Zur Übersicht</a></div>' : ''}}
                         <div class="categories">
                             <strong>🏷️ Kategorien:</strong><br>
                             ${{props.categories.map(cat => `<span class="category-badge">${{cat}}</span>`).join('')}}
@@ -566,7 +578,8 @@ def generate_locations_html(sellers: list[Seller], categories: list[str]) -> str
                     { data: 'location_description' },
                     {
                         data: 'other_text',
-                        visible: false
+                        visible: false,
+                        name: 'other_text'
                     },
                     { data: 'categories' }
                 ]"""
@@ -799,6 +812,24 @@ def generate_locations_html(sellers: list[Seller], categories: list[str]) -> str
             margin-bottom: 12px;
             font-weight: 600;
             font-size: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }}
+
+        .toggle-category-other-btn {{
+            background: rgba(255, 255, 255, 0.3);
+            color: white;
+            border: none;
+            padding: 4px 8px;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: background 0.2s;
+        }}
+
+        .toggle-category-other-btn:hover {{
+            background: rgba(255, 255, 255, 0.5);
         }}
 
         .category-table {{
@@ -962,6 +993,7 @@ def generate_locations_html(sellers: list[Seller], categories: list[str]) -> str
                     <button class="export-btn" id="export-csv-btn">📥 Als CSV exportieren</button>
                     <button class="export-btn" id="export-excel-btn">📥 Als Excel exportieren</button>
                     <button class="export-btn" id="export-gmaps-btn">📥 Google Maps (.kml)</button>
+                    <button class="export-btn" id="toggle-other-btn" style="background: #9C27B0;">📝 Sonstiges anzeigen</button>
                 </div>
 
                 <div class="selection-controls">
@@ -994,7 +1026,10 @@ def generate_locations_html(sellers: list[Seller], categories: list[str]) -> str
         locations = grouped[category]
         html += f"""
                 <div class="category-section">
-                    <div class="category-header">🏷️ {category} ({len(locations)})</div>
+                    <div class="category-header" style="display: flex; justify-content: space-between; align-items: center;">
+                        <span>🏷️ {category} ({len(locations)})</span>
+                        <button class="toggle-category-other-btn" style="background: rgba(255,255,255,0.3); color: white; border: none; padding: 4px 8px; border-radius: 3px; cursor: pointer; font-size: 12px;">📝 V</button>
+                    </div>
                     <div class="category-table">
                         <table class="table table-sm">
                             <thead>
@@ -1003,7 +1038,7 @@ def generate_locations_html(sellers: list[Seller], categories: list[str]) -> str
                                     {f'<th>Stadt</th>' if has_multiple_cities else ''}
                                     {f'<th>PLZ</th>' if has_multiple_cities else ''}
                                     <th>Standort</th>
-                                    <th>Sonstiges</th>
+                                    <th class="other-column" style="display: none;">Sonstiges</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -1014,7 +1049,7 @@ def generate_locations_html(sellers: list[Seller], categories: list[str]) -> str
             html += f"""
                                 <tr>
                                     <td>{location['address']}</td>
-                                    {city_col}{postal_col}<td>{location.get('location_description', '')}</td><td>{location.get('other_text', '')}</td>
+                                    {city_col}{postal_col}<td>{location.get('location_description', '')}</td><td class="other-column" style="display: none;">{location.get('other_text', '')}</td>
                                 </tr>
 """
         html += """
@@ -1116,6 +1151,16 @@ def generate_locations_html(sellers: list[Seller], categories: list[str]) -> str
             document.getElementById('export-gmaps-btn').addEventListener('click', function() {{
                 exportAsKML();
             }});
+
+            // Toggle "Sonstiges" column visibility
+            let otherColumnVisible = false;
+            const toggleBtn = document.getElementById('toggle-other-btn');
+            document.getElementById('toggle-other-btn').addEventListener('click', function() {{
+                otherColumnVisible = !otherColumnVisible;
+                table.column('other_text:name').visible(otherColumnVisible);
+                toggleBtn.textContent = otherColumnVisible ? '📝 Sonstiges verbergen' : '📝 Sonstiges anzeigen';
+                toggleBtn.style.background = otherColumnVisible ? '#d41159' : '#9C27B0';
+            }});
         }});
 
         function getSelectedRows() {{
@@ -1212,6 +1257,23 @@ def generate_locations_html(sellers: list[Seller], categories: list[str]) -> str
                 }}
             }});
         }}
+
+        // Toggle "Sonstiges" column visibility in category tables
+        document.querySelectorAll('.toggle-category-other-btn').forEach(btn => {{
+            btn.addEventListener('click', function(e) {{
+                e.preventDefault();
+                const table = this.closest('.category-section').querySelector('table');
+                const otherCells = table.querySelectorAll('.other-column');
+                const isHidden = otherCells[0].style.display === 'none';
+
+                otherCells.forEach(cell => {{
+                    cell.style.display = isHidden ? '' : 'none';
+                }});
+
+                this.textContent = isHidden ? '📝 V' : '📝 H';
+                this.style.background = isHidden ? 'rgba(255, 255, 255, 0.3)' : 'rgba(212, 17, 89, 0.7)';
+            }});
+        }});
     </script>
 </body>
 </html>

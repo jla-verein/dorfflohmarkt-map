@@ -199,12 +199,66 @@ class PretixClient:
             logger.warning(f"Error fetching question options for question {question_id}: {e}")
             return {}
 
-    def _geocode_address(self, address: str, city: str, postal_code: str, country: str) -> tuple[Optional[float], Optional[float]]:
+    def _apply_answer_overrides(self, address: str, city: str, postal_code: str, answers: list[dict]) -> tuple[str, str, str, Optional[float], Optional[float]]:
+        """
+        Apply address overrides from Pretix question answers.
+
+        Checks for override questions in answers:
+        - override-street
+        - override-zipcode
+        - override-city
+        - override-lat
+        - override-long
+
+        Args:
+            address: Original street address
+            city: Original city
+            postal_code: Original postal code
+            answers: List of answer dictionaries from Pretix
+
+        Returns:
+            Tuple of (address, city, postal_code, latitude, longitude)
+        """
+        latitude = None
+        longitude = None
+
+        for answer in answers:
+            question_identifier = answer.get("question_identifier", "")
+            answer_text = answer.get("answer", "").strip()
+
+            if not answer_text:
+                continue
+
+            if question_identifier == "override-street":
+                address = answer_text
+                logger.debug(f"Override street: {answer_text}")
+            elif question_identifier == "override-zipcode":
+                postal_code = answer_text
+                logger.debug(f"Override zipcode: {answer_text}")
+            elif question_identifier == "override-city":
+                city = answer_text
+                logger.debug(f"Override city: {answer_text}")
+            elif question_identifier == "override-lat":
+                try:
+                    latitude = float(answer_text)
+                    logger.debug(f"Override latitude: {latitude}")
+                except ValueError:
+                    logger.warning(f"Invalid latitude value: {answer_text}")
+            elif question_identifier == "override-long":
+                try:
+                    longitude = float(answer_text)
+                    logger.debug(f"Override longitude: {longitude}")
+                except ValueError:
+                    logger.warning(f"Invalid longitude value: {answer_text}")
+
+        return address, city, postal_code, latitude, longitude
+
+    def _geocode_address(self, address: str, city: str, postal_code: str, country: str, override_lat: Optional[float] = None, override_long: Optional[float] = None) -> tuple[Optional[float], Optional[float]]:
         """
         Geocode an address to get latitude and longitude.
 
-        Handles address overrides and delegates to cached geocoding function.
-        - If override has coordinates, use those directly
+        Handles address overrides from Pretix questions and legacy JSON overrides.
+        - If override coordinates provided, use those directly
         - If override has an address, geocode the override address instead
         - Otherwise, geocode the original address
         - Results are cached to avoid redundant requests and rate limiting delays
@@ -214,25 +268,32 @@ class PretixClient:
             city: City name
             postal_code: Postal code
             country: Country code
+            override_lat: Override latitude from Pretix question
+            override_long: Override longitude from Pretix question
 
         Returns:
             Tuple of (latitude, longitude) or (None, None) if geocoding fails
         """
-        # Check for address override
-        override = self._get_address_override(address, postal_code, city)
+        # If override coordinates are provided from Pretix questions, use those
+        if override_lat is not None and override_long is not None:
+            logger.info(f"Using override coordinates from Pretix for address '{address}'")
+            return override_lat, override_long
 
-        if override:
+        # Check for legacy address override from JSON file
+        legacy_override = self._get_address_override(address, postal_code, city)
+
+        if legacy_override:
             # If override has direct coordinates, use those
-            if "latitude" in override and "longitude" in override:
-                logger.info(f"Using override coordinates for address '{address}'")
-                return override["latitude"], override["longitude"]
+            if "latitude" in legacy_override and "longitude" in legacy_override:
+                logger.info(f"Using legacy override coordinates for address '{address}'")
+                return legacy_override["latitude"], legacy_override["longitude"]
 
             # If override has an address, use that for geocoding
-            if "address" in override:
-                address = override["address"]
-                city = override.get("city", city)
-                postal_code = override.get("postal_code", postal_code)
-                logger.info(f"Using override address for original address, geocoding: {address}")
+            if "address" in legacy_override:
+                address = legacy_override["address"]
+                city = legacy_override.get("city", city)
+                postal_code = legacy_override.get("postal_code", postal_code)
+                logger.info(f"Using legacy override address for original address, geocoding: {address}")
 
         # Build full address string and use cached geocoding
         full_address = f"{address}, {postal_code} {city}, {country}"
@@ -261,6 +322,8 @@ class PretixClient:
             categories = []
             location_description = None
             other_text = None
+            override_lat = None
+            override_long = None
 
             if order.get("positions"):
                 for position in order["positions"]:
@@ -268,7 +331,14 @@ class PretixClient:
                     if position.get("item") != self.product_id:
                         continue
 
-                    for answer in position.get("answers", []):
+                    answers = position.get("answers", [])
+
+                    # Apply address overrides from Pretix questions
+                    address, city, postal_code, override_lat, override_long = self._apply_answer_overrides(
+                        address, city, postal_code, answers
+                    )
+
+                    for answer in answers:
                         question_id = answer.get("question")
                         question_identifier = answer.get("question_identifier")
                         option_identifiers = answer.get("option_identifiers", [])
@@ -285,15 +355,15 @@ class PretixClient:
                         # Question 2 is the location description
                         if question_id == 2 and answer_text:
                             location_description = answer_text
-                        
+
                         if question_identifier == "other-public" and answer_text:
                             other_text = answer_text if answer_text else None
 
 
             # Only create seller if we have address info
             if address or city:
-                # Geocode the address
-                latitude, longitude = self._geocode_address(address, city, postal_code, country)
+                # Geocode the address (will use override coordinates if provided)
+                latitude, longitude = self._geocode_address(address, city, postal_code, country, override_lat, override_long)
 
                 return Seller(
                     address=address,
