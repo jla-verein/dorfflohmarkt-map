@@ -11,6 +11,7 @@ class Settings(BaseSettings):
     pretix_product_id: int
     api_host: str = "http://localhost:8000"
     pretix_api_base_url: str = "https://pretix.eu/api/v1"
+    static_locations_file: str = "static_locations.json"
 
     class Config:
         env_file = ".env"

@@ -1,0 +1,70 @@
+{
+  "static_locations": [
+    {
+      "id": "toilet_1",
+      "type": "toilets",
+      "name": "Toilettenanlage Schlosspark",
+      "address": "Friedrich-Hecker-Straße 4C",
+      "postal_code": "74918",
+      "city": "Angelbachtal",
+      "country": "DE",
+      "opening_hours": "10:00 - 20:00"
+    },
+    {
+      "id": "parking_1",
+      "type": "parking",
+      "name": "Festplatz Angelbachtal",
+      "address": "Schulstraße",
+      "postal_code": "74918",
+      "city": "Angelbachtal"
+    },
+    {
+      "id": "parking_2",
+      "type": "parking",
+      "name": "Parkplatz Sonnenberghalle",
+      "address": "Schulstraße 33",
+      "postal_code": "74918",
+      "city": "Angelbachtal"
+    },
+    {
+      "id": "gastro_1",
+      "type": "food_and_drink",
+      "name": "Café & Blumen am Schloss",
+      "address": "Friedrichstraße 3",
+      "postal_code": "74918",
+      "city": "Angelbachtal",
+      "opening_hours": "09:00 - 18:00",
+      "phone": "07265-8028",
+      "website": "https://www.blumenamschloss.de"
+    },
+    {
+      "id": "gastro_2",
+      "type": "food_and_drink",
+      "name": "Zum Geißenpeter",
+      "address": "Karlstraße 14",
+      "postal_code": "74918",
+      "city": "Angelbachtal",
+      "opening_hours": "12:00 - 20:00",
+      "phone": "07265-9170955",
+      "website": "https://www.besenwirtschaft-angelbachtal.de"
+    },
+    {
+      "id": "parking_osm_example",
+      "type": "parking",
+      "name": "Parkplatz (via OSM ID)",
+      "osmid": "W123456789",
+      "postal_code": "74918",
+      "city": "Angelbachtal"
+    },
+    {
+      "id": "gastro_coordinates",
+      "type": "food_and_drink",
+      "name": "Restaurant (via Koordinaten)",
+      "latitude": 49.1265,
+      "longitude": 8.9945,
+      "opening_hours": "11:00 - 22:00",
+      "phone": "07265-123456",
+      "website": "https://example.com"
+    }
+  ]
+}

@@ -1,15 +1,16 @@
 """Generate Leaflet map HTML with seller data."""
 import json
-from .models import Seller
+from .models import Seller, StaticLocation
 
 
-def generate_map_html(sellers: list[Seller], categories: list[str]) -> str:
+def generate_map_html(sellers: list[Seller], categories: list[str], static_locations: list[StaticLocation]) -> str:
     """
     Generate HTML for an interactive Leaflet map with seller markers.
 
     Args:
         sellers: List of Seller objects
         categories: List of available categories
+        static_locations: List of static location objects
 
     Returns:
         HTML string for the map
@@ -41,6 +42,21 @@ def generate_map_html(sellers: list[Seller], categories: list[str]) -> str:
 
     geojson = {"type": "FeatureCollection", "features": geojson_features}
     geojson_json = json.dumps(geojson)
+
+    # Convert static locations to JSON
+    static_locations_data = []
+    for location in static_locations:
+        static_locations_data.append({
+            "id": location.id,
+            "type": location.type,
+            "name": location.name,
+            "latitude": location.latitude,
+            "longitude": location.longitude,
+            "opening_hours": location.opening_hours,
+            "phone": location.phone,
+            "website": location.website,
+        })
+    static_locations_json = json.dumps(static_locations_data)
 
     # Generate category checkboxes
     category_filters = "\n".join(
@@ -389,6 +405,7 @@ def generate_map_html(sellers: list[Seller], categories: list[str]) -> str:
         // Data from backend
         const geoJsonData = {geojson_json};
         const allCategories = {json.dumps(categories)};
+        const staticLocationsData = {static_locations_json};
 
         // Store all markers
         let markers = {{}};
@@ -414,6 +431,80 @@ def generate_map_html(sellers: list[Seller], categories: list[str]) -> str:
                 }});
             }}
         }});
+
+        // Create custom marker icon
+        function getMarkerColor(index) {{
+            const colors = ['#2196F3', '#4CAF50', '#FF9800', '#E91E63', '#9C27B0', '#00BCD4'];
+            return colors[index % colors.length];
+        }}
+
+        // Create static location markers
+        function createStaticLocationMarkers() {{
+            const iconDefinitions = {{
+                'toilets': {{
+                    icon: '🚻',
+                    color: '#00BCD4',
+                    title: 'Toiletten',
+                    fontSize: '18px',
+                    size: 30
+                }},
+                'food_and_drink': {{
+                    icon: '🍽️',
+                    color: '#FF9800',
+                    title: 'Essen & Trinken',
+                    fontSize: '24px',
+                    size: 36
+                }},
+                'parking': {{
+                    icon: '🅿️',
+                    color: '#2196F3',
+                    title: 'Parkplatz',
+                    fontSize: '18px',
+                    size: 30
+                }}
+            }};
+
+            staticLocationsData.forEach(location => {{
+                if (location.latitude === null || location.longitude === null) {{
+                    return;
+                }}
+
+                const iconDef = iconDefinitions[location.type];
+                const latlng = [location.latitude, location.longitude];
+
+                // Create marker with appropriately sized icon
+                const iconElement = L.divIcon({{
+                    html: `<div style="font-size: ${{iconDef.fontSize}}; display: flex; align-items: center; justify-content: center; width: ${{iconDef.size}}px; height: ${{iconDef.size}}px;">${{iconDef.icon}}</div>`,
+                    className: 'static-location-marker',
+                    iconSize: [iconDef.size, iconDef.size]
+                }});
+
+                // Create marker with icon
+                const iconMarker = L.marker(latlng, {{ icon: iconElement }});
+
+                let popupHTML = `<div class="popup-content" style="min-width: 220px;">`;
+                popupHTML += `<div style="font-weight: bold; font-size: 14px; margin-bottom: 10px; color: ${{iconDef.color}}">`;
+                popupHTML += `${{iconDef.icon}} ${{location.name || iconDef.title}}`;
+                popupHTML += `</div>`;
+
+                if (location.opening_hours) {{
+                    popupHTML += `<div style="font-size: 13px; margin-bottom: 8px;"><strong>⏰ Öffnungszeiten:</strong><br>${{location.opening_hours}}</div>`;
+                }}
+
+                if (location.phone) {{
+                    popupHTML += `<div style="font-size: 13px; margin-bottom: 8px;"><strong>📞 Telefon:</strong><br><a href="tel:${{location.phone}}">${{location.phone}}</a></div>`;
+                }}
+
+                if (location.website) {{
+                    popupHTML += `<div style="font-size: 13px;"><strong>🌐 Webseite:</strong><br><a href="${{location.website}}" target="_blank">Link öffnen</a></div>`;
+                }}
+
+                popupHTML += `</div>`;
+
+                iconMarker.bindPopup(popupHTML);
+                iconMarker.addTo(map);
+            }});
+        }}
 
         // Create custom marker icon
         function getMarkerColor(index) {{
@@ -486,6 +577,7 @@ def generate_map_html(sellers: list[Seller], categories: list[str]) -> str:
         }}
 
         createMarkers();
+        createStaticLocationMarkers();
 
         // Handle category filter changes
         const categoryFilters = document.querySelectorAll('.category-filter');

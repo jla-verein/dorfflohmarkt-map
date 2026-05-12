@@ -6,6 +6,9 @@
 # Address overrides (user-specific)
 overrides.json
 
+# Static locations (user-specific configuration)
+static_locations.json
+
 # Python
 __pycache__/
 *.py[cod]

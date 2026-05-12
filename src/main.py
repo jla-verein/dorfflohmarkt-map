@@ -8,6 +8,7 @@ from .config import settings
 from .pretix_client import pretix_client
 from .models import SellersResponse
 from .map_generator import generate_map_html, generate_locations_html
+from .static_locations import load_static_locations
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -28,9 +29,17 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Cache for sellers data
+# Cache for sellers and static location data
 _sellers_cache = None
 _categories_cache = None
+_static_locations_cache = None
+
+
+def get_static_locations_data():
+    global _static_locations_cache
+    if _static_locations_cache is None:
+        _static_locations_cache = load_static_locations()
+    return _static_locations_cache
 
 
 async def get_sellers_data():
@@ -70,7 +79,8 @@ async def get_sellers():
 async def get_map():
     """Get the interactive map page."""
     sellers, categories = await get_sellers_data()
-    html = generate_map_html(sellers, categories)
+    static_locations = get_static_locations_data()
+    html = generate_map_html(sellers, categories, static_locations)
     return html
 
 
@@ -85,9 +95,10 @@ async def get_locations():
 @app.post("/api/refresh")
 async def refresh_sellers():
     """Refresh sellers data from Pretix API."""
-    global _sellers_cache, _categories_cache
+    global _sellers_cache, _categories_cache, _static_locations_cache
     _sellers_cache = None
     _categories_cache = None
+    _static_locations_cache = None
     sellers, categories = await get_sellers_data()
     return {
         "status": "refreshed",

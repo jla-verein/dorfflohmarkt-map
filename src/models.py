@@ -1,5 +1,5 @@
 """Data models for sellers and orders."""
-from typing import Optional
+from typing import Optional, Literal
 from pydantic import BaseModel
 
 
@@ -27,6 +27,38 @@ class Seller(BaseModel):
                 "location_description": "Großes Regal mit Spielzeugen",
                 "latitude": 52.5200,
                 "longitude": 13.4050,
+            }
+        }
+
+
+class StaticLocation(BaseModel):
+    """A static map location such as toilets, food/drink, or parking."""
+
+    id: Optional[str] = None
+    type: Literal["toilets", "food_and_drink", "parking"]
+    name: Optional[str] = None
+    address: Optional[str] = None
+    city: Optional[str] = None
+    postal_code: Optional[str] = None
+    country: Optional[str] = "DE"
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
+    osmid: Optional[str] = None
+    opening_hours: Optional[str] = None
+    phone: Optional[str] = None
+    website: Optional[str] = None
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "id": "wc-1",
+                "type": "toilets",
+                "name": "Öffentliche Toilette",
+                "address": "Talstraße 11",
+                "postal_code": "74918",
+                "city": "Angelbachtal",
+                "opening_hours": "10:00 - 18:00",
+                "osmid": "N123456789"
             }
         }
 

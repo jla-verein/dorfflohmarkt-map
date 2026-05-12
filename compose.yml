@@ -4,7 +4,7 @@ services:
     env_file: .env
     restart: unless-stopped
     volumes:
-      - ./overrides.json:/app/overrides.json:ro
+      - ./static_locations.json:/app/static_locations.json:ro
     healthcheck:
       test: ["CMD", "python", "-c", "import httpx; httpx.get('http://localhost:8000/health')"]
       interval: 30s
