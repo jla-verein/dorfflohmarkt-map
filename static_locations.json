@@ -9,6 +9,12 @@
       "opening_hours": "10:00 - 20:00"
     },
     {
+      "id": "parking_bahnhof",
+      "type": "parking",
+      "name": "Parkplatz Eichtersheim Bahnhof",
+      "osmid": "W1516249486"
+    },
+    {
       "id": "parking_festplatz",
       "type": "parking",
       "name": "Festplatz Angelbachtal",
