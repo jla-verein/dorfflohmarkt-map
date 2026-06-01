@@ -150,6 +150,7 @@ class PretixClient:
         url = f"{self.base_url}/organizers/{self.organizer}/events/{self.event}/orders/"
         params = {
             "status": "p",
+            "item": "1",
         }
 
         async with httpx.AsyncClient() as client:
