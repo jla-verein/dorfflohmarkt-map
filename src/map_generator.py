@@ -619,6 +619,338 @@ def generate_map_html(sellers: list[Seller], categories: list[str], static_locat
     return html
 
 
+def generate_static_map_html(
+    sellers: list[Seller],
+    static_locations: list[StaticLocation],
+    enable_clustering: bool = True,
+    enable_controls: bool = True,
+    enable_static_locations: bool = True,
+) -> str:
+    """
+    Generate HTML for a static Leaflet map without UI controls or filtering.
+
+    Args:
+        sellers: List of Seller objects
+        static_locations: List of static location objects
+        enable_clustering: Whether to enable marker clustering
+        enable_controls: Whether to enable map controls (zoom, attribution)
+        enable_static_locations: Whether to show static location markers
+
+    Returns:
+        HTML string for the static map
+    """
+    # Convert sellers to GeoJSON format
+    geojson_features = []
+    for seller in sellers:
+        if seller.latitude is None or seller.longitude is None:
+            continue
+
+        feature = {
+            "type": "Feature",
+            "geometry": {
+                "type": "Point",
+                "coordinates": [seller.longitude, seller.latitude],
+            },
+            "properties": {
+                "address": seller.address,
+                "city": seller.city,
+                "postal_code": seller.postal_code,
+                "country": seller.country,
+                "categories": seller.categories,
+                "location_description": seller.location_description,
+                "other_text": seller.other_text,
+            },
+        }
+        geojson_features.append(feature)
+
+    geojson = {"type": "FeatureCollection", "features": geojson_features}
+    geojson_json = json.dumps(geojson)
+
+    # Convert static locations to JSON
+    static_locations_data = []
+    if enable_static_locations:
+        for location in static_locations:
+            static_locations_data.append({
+                "id": location.id,
+                "type": location.type,
+                "name": location.name,
+                "latitude": location.latitude,
+                "longitude": location.longitude,
+                "opening_hours": location.opening_hours,
+                "phone": location.phone,
+                "website": location.website,
+            })
+    static_locations_json = json.dumps(static_locations_data)
+
+    # Build marker cluster configuration
+    cluster_init = ""
+    add_to_map_code = ""
+    after_loop_code = ""
+
+    if enable_clustering:
+        cluster_init = """
+        const markerClusterGroup = L.markerClusterGroup({
+            maxClusterRadius: 80,
+            iconCreateFunction: function(cluster) {
+                const count = cluster.getChildCount();
+                let size = 'small';
+                let color = '#0099ff';
+
+                if (count > 10) {
+                    size = 'large';
+                    color = '#d41159';
+                } else if (count > 5) {
+                    size = 'medium';
+                    color = '#ff8c00';
+                }
+
+                return L.divIcon({
+                    html: '<div style="background:' + color + '; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 14px;">' + count + '</div>',
+                    className: 'cluster-' + size,
+                    iconSize: [40, 40]
+                });
+            }
+        });"""
+        add_to_map_code = "markerClusterGroup.addLayer(marker);"
+        after_loop_code = "map.addLayer(markerClusterGroup);"
+    else:
+        add_to_map_code = "marker.addTo(map);"
+
+    # Build map controls configuration
+    zoom_control = "true" if enable_controls else "false"
+    attribution = "'© OpenStreetMap contributors'" if enable_controls else "false"
+
+    html = f"""
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dorfflohmarkt Karte</title>
+
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+    <!-- Leaflet MarkerCluster CSS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.1/MarkerCluster.min.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.1/MarkerCluster.Default.min.css" />
+
+    <style>
+        * {{
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }}
+
+        body {{
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen",
+                "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue",
+                sans-serif;
+        }}
+
+        #map {{
+            width: 100%;
+            height: 100vh;
+        }}
+
+        .popup-content {{
+            min-width: 220px;
+        }}
+
+        .popup-content .address {{
+            font-size: 13px;
+            color: #555;
+            margin-bottom: 10px;
+            line-height: 1.4;
+        }}
+
+        .popup-content .categories {{
+            font-size: 12px;
+            margin-top: 8px;
+        }}
+
+        .popup-content .categories strong {{
+            display: block;
+            margin-bottom: 6px;
+            color: #333;
+        }}
+
+        .popup-content .category-badge {{
+            display: inline-block;
+            background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%);
+            color: white;
+            padding: 3px 10px;
+            border-radius: 12px;
+            margin-right: 5px;
+            margin-bottom: 5px;
+            font-size: 11px;
+            font-weight: 500;
+        }}
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+
+    <!-- Leaflet JS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+    <!-- Leaflet MarkerCluster JS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.1/leaflet.markercluster.min.js"></script>
+
+    <script>
+        // Initialize map
+        const map = L.map('map', {{
+            zoomControl: {zoom_control}
+        }}).setView([51.5, 10.0], 6);
+
+        // Add OpenStreetMap tile layer
+        L.tileLayer('https://{{s}}.tile.openstreetmap.org/{{z}}/{{x}}/{{y}}.png', {{
+            attribution: {attribution},
+            maxZoom: 19,
+        }}).addTo(map);
+
+        // Data from backend
+        const geoJsonData = {geojson_json};
+        const staticLocationsData = {static_locations_json};
+
+        // Create custom marker icon
+        function getMarkerColor(index) {{
+            const colors = ['#2196F3', '#4CAF50', '#FF9800', '#E91E63', '#9C27B0', '#00BCD4'];
+            return colors[index % colors.length];
+        }}
+
+        // Create static location markers
+        function createStaticLocationMarkers() {{
+            const iconDefinitions = {{
+                'toilets': {{
+                    icon: '🚻',
+                    color: '#00BCD4',
+                    title: 'Toiletten',
+                    fontSize: '18px',
+                    size: 30
+                }},
+                'food_and_drink': {{
+                    icon: '🍽️',
+                    color: '#FF9800',
+                    title: 'Essen & Trinken',
+                    fontSize: '24px',
+                    size: 36
+                }},
+                'parking': {{
+                    icon: '🅿️',
+                    color: '#2196F3',
+                    title: 'Parkplatz',
+                    fontSize: '18px',
+                    size: 30
+                }}
+            }};
+
+            staticLocationsData.forEach(location => {{
+                if (location.latitude === null || location.longitude === null) {{
+                    return;
+                }}
+
+                const iconDef = iconDefinitions[location.type];
+                const latlng = [location.latitude, location.longitude];
+
+                // Create marker with appropriately sized icon
+                const iconElement = L.divIcon({{
+                    html: `<div style="font-size: ${{iconDef.fontSize}}; display: flex; align-items: center; justify-content: center; width: ${{iconDef.size}}px; height: ${{iconDef.size}}px;">${{iconDef.icon}}</div>`,
+                    className: 'static-location-marker',
+                    iconSize: [iconDef.size, iconDef.size]
+                }});
+
+                // Create marker with icon
+                const iconMarker = L.marker(latlng, {{ icon: iconElement }});
+
+                let popupHTML = `<div class="popup-content" style="min-width: 220px;">`;
+                popupHTML += `<div style="font-weight: bold; font-size: 14px; margin-bottom: 10px; color: ${{iconDef.color}}">`;
+                popupHTML += `${{iconDef.icon}} ${{location.name || iconDef.title}}`;
+                popupHTML += `</div>`;
+
+                if (location.opening_hours) {{
+                    popupHTML += `<div style="font-size: 13px; margin-bottom: 8px;"><strong>⏰ Öffnungszeiten:</strong><br>${{location.opening_hours}}</div>`;
+                }}
+
+                if (location.phone) {{
+                    popupHTML += `<div style="font-size: 13px; margin-bottom: 8px;"><strong>📞 Telefon:</strong><br><a href="tel:${{location.phone}}">${{location.phone}}</a></div>`;
+                }}
+
+                if (location.website) {{
+                    popupHTML += `<div style="font-size: 13px;"><strong>🌐 Webseite:</strong><br><a href="${{location.website}}" target="_blank">Link öffnen</a></div>`;
+                }}
+
+                popupHTML += `</div>`;
+
+                iconMarker.bindPopup(popupHTML);
+                iconMarker.addTo(map);
+            }});
+        }}
+
+        // Create markers from GeoJSON
+        function createMarkers() {{
+            let bounds = L.latLngBounds();
+            let markerIndex = 0;
+
+            {cluster_init}
+
+            geoJsonData.features.forEach(feature => {{
+                const props = feature.properties;
+                const coords = feature.geometry.coordinates;
+                const latlng = [coords[1], coords[0]];
+
+                // Create a styled marker
+                const marker = L.circleMarker(latlng, {{
+                    radius: 10,
+                    fillColor: getMarkerColor(markerIndex),
+                    color: '#ffffff',
+                    weight: 3,
+                    opacity: 1,
+                    fillOpacity: 0.85
+                }});
+
+                const popupContent = `
+                    <div class="popup-content">
+                        <div class="address">
+                            <strong>📍 Adresse:</strong><br>
+                            ${{props.address}}<br>
+                            ${{props.postal_code}} ${{props.city}}
+                        </div>
+                        ${{props.location_description ? '<div class="location-desc" style="font-size: 13px; color: #333; margin: 8px 0; padding: 8px; background: #f5f5f5; border-radius: 4px;"><strong>📍 Standort:</strong> ' + props.location_description + '</div>' : ''}}
+                        ${{props.other_text ? '<div class="other-text" style="font-size: 13px; color: #333; margin: 8px 0; padding: 8px; background: #f5f5f5; border-radius: 4px;"><strong>📝 Sonstiges:</strong> ' + props.other_text + '</div>' : ''}}
+                        <div class="categories">
+                            <strong>🏷️ Kategorien:</strong><br>
+                            ${{props.categories.map(cat => `<span class="category-badge">${{cat}}</span>`).join('')}}
+                        </div>
+                    </div>
+                `;
+
+                marker.bindPopup(popupContent);
+                marker.on('click', function() {{
+                    marker.openPopup();
+                }});
+
+                {add_to_map_code}
+                bounds.extend(latlng);
+                markerIndex++;
+            }});
+
+            {("map.addLayer(markerClusterGroup);" if enable_clustering else "")}
+
+            // Fit map to bounds
+            if (geoJsonData.features.length > 0) {{
+                map.fitBounds(bounds, {{ padding: [50, 50] }});
+            }}
+        }}
+
+        createMarkers();
+        {('createStaticLocationMarkers();' if enable_static_locations else '')}
+    </script>
+</body>
+</html>
+"""
+
+    return html
+
+
 def generate_locations_html(sellers: list[Seller], categories: list[str]) -> str:
     """
     Generate HTML for locations list page with DataTables.

@@ -4,10 +4,9 @@ from fastapi.responses import HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
 import logging
 
-from .config import settings
 from .pretix_client import pretix_client
 from .models import SellersResponse
-from .map_generator import generate_map_html, generate_locations_html
+from .map_generator import generate_map_html, generate_locations_html, generate_static_map_html
 from .static_locations import load_static_locations
 
 # Configure logging
@@ -55,6 +54,7 @@ async def get_sellers_data():
             logger.error(f"Error fetching sellers from Pretix: {e}")
             raise HTTPException(status_code=500, detail="Error fetching sellers from Pretix")
 
+    assert _categories_cache is not None
     return _sellers_cache, _categories_cache
 
 
@@ -89,6 +89,31 @@ async def get_locations():
     """Get the locations list page."""
     sellers, categories = await get_sellers_data()
     html = generate_locations_html(sellers, categories)
+    return html
+
+
+@app.get("/static-map", response_class=HTMLResponse)
+async def get_static_map(
+    clustering: bool = True,
+    controls: bool = True,
+    static_locations: bool = True,
+):
+    """Get a static map with optional configuration.
+
+    Query parameters:
+    - clustering: Enable marker clustering (default: true)
+    - controls: Enable map controls like zoom and attribution (default: true)
+    - static_locations: Show static location markers (default: true)
+    """
+    sellers, _ = await get_sellers_data()
+    static_locs = get_static_locations_data()
+    html = generate_static_map_html(
+        sellers,
+        static_locs,
+        enable_clustering=clustering,
+        enable_controls=controls,
+        enable_static_locations=static_locations,
+    )
     return html
 
 
